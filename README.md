@@ -1,0 +1,52 @@
+# setupRC
+
+One script to set up [neovimRC](https://github.com/KazHakiStan/neovimRC) and
+[weztermRC](https://github.com/KazHakiStan/weztermRC) on a new machine, or to
+check that an existing one has everything they need.
+
+What the configs need lives in [`packages.txt`](packages.txt). Both scripts read
+it, install whatever is missing, clone or update the configs, and sync nvim's
+plugins. They are safe to run again: present things are skipped.
+
+## macOS
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.sh)"
+```
+
+Or from a clone: `./install.sh`, or `./install.sh --check` to only report.
+
+Installs Homebrew if needed and checks Xcode (lldb-dap for debugging comes with
+the full Xcode from the App Store; the script only reminds about it).
+
+## Windows
+
+In PowerShell (no admin):
+
+```powershell
+irm https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.ps1 | iex
+```
+
+Or from a clone: `.\install.ps1`, or `.\install.ps1 -Check` to only report.
+
+Installs Scoop if needed. nvim's config goes to `%LOCALAPPDATA%\nvim`, WezTerm's
+to `~\.config\wezterm`.
+
+## Where things go
+
+| | macOS | Windows |
+|---|---|---|
+| packages | Homebrew | Scoop |
+| nvim config | `~/.config/nvim` | `%LOCALAPPDATA%\nvim` |
+| WezTerm config | `~/.config/wezterm` | `~\.config\wezterm` |
+
+A config folder that exists but isn't the repo gets moved aside to
+`<folder>.bak-<date>` before cloning. Configs are cloned over SSH when GitHub
+accepts the machine's key, over HTTPS otherwise.
+
+Language servers are installed by Mason on nvim's first start (`:Mason`).
+
+## Adding a dependency
+
+Add a line to `packages.txt`: the command to look for, the brew and scoop
+package names (`-` where it isn't needed), and what uses it.
