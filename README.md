@@ -46,6 +46,22 @@ accepts the machine's key, over HTTPS otherwise.
 
 Language servers are installed by Mason on nvim's first start (`:Mason`).
 
+## Your settings
+
+The configs stay as they are in their repos, so `git pull` always updates them
+cleanly. Personal settings live outside, in `~/.config/kazrc/`, created on the
+first start with every default commented out:
+
+| file | opens with | what's in it |
+|---|---|---|
+| `wezterm.lua` | `LEADER e` | shell, font, leader, window, themes and backgrounds, status bar words and glyphs |
+| `nvim.lua` | `:KazConfig` | leader, vim options, theme order, completion Tab, projects, LSP servers, parsers, your own plugins and keymaps |
+| `theme.json` | `LEADER t`, `:Theme` | the current theme, shared by both |
+
+Uncomment what you change; saving applies it. A typo or a broken file never
+breaks anything: those settings stay at their defaults and the problem is
+shown (WezTerm's bar, nvim's `:KazProblems`).
+
 ## Adding a dependency
 
 Add a line to `packages.txt`: the command to look for, the brew and scoop
