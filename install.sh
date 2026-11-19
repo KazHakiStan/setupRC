@@ -150,7 +150,7 @@ if [ $CHECK = 0 ] && command -v nvim >/dev/null && [ -d "$HOME/.config/nvim" ]; 
     say "  packer sync…"
     nvim --headless "+autocmd User PackerComplete quitall" "+PackerSync" >/dev/null 2>&1
     say "  treesitter parsers…"
-    nvim --headless "+TSUpdateSync" "+quitall" >/dev/null 2>&1
+    nvim --headless "+lua local t = require('kazhakistan.treesitter').install() if t then t:wait(600000) end" "+quitall" >/dev/null 2>&1
     say "  language servers install by Mason on the first nvim start (:Mason shows progress)"
 fi
 
