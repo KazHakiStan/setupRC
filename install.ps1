@@ -114,8 +114,8 @@ foreach ($c in $Configs) {
 # ---- nvim plugins ------------------------------------------------------------
 if (-not $Check -and (Has nvim) -and (Test-Path $Configs[0].Dir)) {
     Step "Neovim plugins"
-    Write-Host "  packer sync..."
-    nvim --headless "+autocmd User PackerComplete quitall" "+PackerSync" *> $null
+    Write-Host "  plugins at the versions in lazy-lock.json..."
+    nvim --headless "+Lazy! restore" "+quitall" *> $null
     Write-Host "  treesitter parsers..."
     nvim --headless "+lua local t = require('kazhakistan.treesitter').install() if t then t:wait(600000) end" "+quitall" *> $null
     Write-Host "  language servers install by Mason on the first nvim start (:Mason shows progress)"

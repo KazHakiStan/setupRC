@@ -147,8 +147,8 @@ done
 # ── nvim plugins ────────────────────────────────────────────────────────────
 if [ $CHECK = 0 ] && command -v nvim >/dev/null && [ -d "$HOME/.config/nvim" ]; then
     step "Neovim plugins"
-    say "  packer sync…"
-    nvim --headless "+autocmd User PackerComplete quitall" "+PackerSync" >/dev/null 2>&1
+    say "  plugins at the versions in lazy-lock.json…"
+    nvim --headless "+Lazy! restore" "+quitall" >/dev/null 2>&1
     say "  treesitter parsers…"
     nvim --headless "+lua local t = require('kazhakistan.treesitter').install() if t then t:wait(600000) end" "+quitall" >/dev/null 2>&1
     say "  language servers install by Mason on the first nvim start (:Mason shows progress)"
