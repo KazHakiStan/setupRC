@@ -116,11 +116,24 @@ if ($env:KAZRC_REPO) {
             Write-Host "  moved the old $kdir to $backup"
         }
         git clone -q $env:KAZRC_REPO $kdir 2>$null
+        # no access yet (a new machine): log in with gh, which can create and
+        # upload an SSH key, then try once more
+        if ($LASTEXITCODE -ne 0 -and [Environment]::UserInteractive -and (Has gh)) {
+            gh auth status *> $null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "  no access to $($env:KAZRC_REPO) yet: log in to GitHub (pick SSH and let gh add a key)"
+                gh auth login -h github.com -p ssh
+                if ($LASTEXITCODE -eq 0) {
+                    gh auth setup-git *> $null
+                    git clone -q $env:KAZRC_REPO $kdir 2>$null
+                }
+            }
+        }
         if ($LASTEXITCODE -eq 0) {
             if ($theme) { Set-Content -NoNewline -Path (Join-Path $kdir "theme.json") -Value $theme }
             New "kazrc" $kdir
         } else {
-            Bad "kazrc" "can't clone $($env:KAZRC_REPO): set up GitHub access (ssh key or gh auth login), run again"
+            Bad "kazrc" "can't clone $($env:KAZRC_REPO): no GitHub access (gh auth login), run again"
         }
     }
     Remove-Item Env:GIT_SSH_COMMAND

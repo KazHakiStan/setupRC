@@ -8,6 +8,7 @@
 #
 # check    brew                  scoop                     what for
 git        git                   git                       cloning configs and plugins, fugitive
+gh         gh                    gh                        GitHub login: access to a private settings repo (KAZRC_REPO)
 nvim       neovim                neovim                    the editor (0.12+)
 wezterm    cask:wezterm@nightly  versions/wezterm-nightly  the terminal
 rg         ripgrep               ripgrep                   Telescope live grep

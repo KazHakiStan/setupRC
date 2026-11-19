@@ -142,11 +142,19 @@ if [ -n "${KAZRC_REPO:-}" ]; then
             backup="$kdir.bak-$(date +%Y%m%d-%H%M%S)"
             mv "$kdir" "$backup" && say "  moved the old $kdir to $backup"
         fi
-        if git clone -q "$KAZRC_REPO" "$kdir" 2>/dev/null; then
+        kclone() { git clone -q "$KAZRC_REPO" "$kdir" 2>/dev/null; }
+        # no access yet (a new machine): log in with gh, which can create and
+        # upload an SSH key, then try once more
+        gh_login() {
+            [ -t 0 ] && command -v gh >/dev/null && ! gh auth status >/dev/null 2>&1 || return 1
+            say "  no access to $KAZRC_REPO yet: log in to GitHub (pick SSH and let gh add a key)"
+            gh auth login -h github.com -p ssh && gh auth setup-git >/dev/null 2>&1
+        }
+        if kclone || { gh_login && kclone; }; then
             [ -n "$theme" ] && printf '%s' "$theme" > "$kdir/theme.json"
             new "kazrc" "$kdir"
         else
-            bad "kazrc" "can't clone $KAZRC_REPO: set up GitHub access (ssh key or gh auth login), run again"
+            bad "kazrc" "can't clone $KAZRC_REPO: no GitHub access (gh auth login), run again"
         fi
     fi
     unset GIT_SSH_COMMAND

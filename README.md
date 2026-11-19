@@ -68,8 +68,9 @@ KAZRC_REPO=git@github.com:<you>/kazRC.git ./install.sh
 $env:KAZRC_REPO = "git@github.com:<you>/kazRC.git"; .\install.ps1
 ```
 
-A private repo needs GitHub access first (an SSH key, or `gh auth login`);
-without it the step is reported and skipped. `theme.json` is per machine:
+A private repo needs GitHub access. On a new machine without it, the script
+runs `gh auth login` (pick SSH and gh creates and uploads a key) and tries
+again; skip that and the step is reported and skipped. `theme.json` is per machine:
 leave it out of the repo.
 
 Uncomment what you change; saving applies it. A typo or a broken file never
