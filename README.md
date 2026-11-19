@@ -58,6 +58,20 @@ first start with every default commented out:
 | `nvim.lua` | `:KazConfig` | leader, vim options, theme order, completion Tab, projects, LSP servers, parsers, your own plugins and keymaps |
 | `theme.json` | `LEADER t`, `:Theme` | the current theme, shared by both |
 
+Keep them in a private repo of your own, and setupRC clones it first on a new
+machine (before nvim or WezTerm could create the templates):
+
+```sh
+KAZRC_REPO=git@github.com:<you>/kazRC.git ./install.sh
+```
+```powershell
+$env:KAZRC_REPO = "git@github.com:<you>/kazRC.git"; .\install.ps1
+```
+
+A private repo needs GitHub access first (an SSH key, or `gh auth login`);
+without it the step is reported and skipped. `theme.json` is per machine:
+leave it out of the repo.
+
 Uncomment what you change; saving applies it. A typo or a broken file never
 breaks anything: those settings stay at their defaults and the problem is
 shown (WezTerm's bar, nvim's `:KazProblems`).

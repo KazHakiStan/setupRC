@@ -5,6 +5,9 @@
 #   ./install.sh           install what's missing, clone/update configs, sync plugins
 #   ./install.sh --check   only report what's missing, change nothing
 #
+# Your own settings repo (~/.config/kazrc), cloned before anything starts:
+#   KAZRC_REPO=git@github.com:<you>/kazRC.git ./install.sh
+#
 # On a fresh Mac, without cloning this repo first:
 #   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.sh)"
 
@@ -114,6 +117,41 @@ if command -v nvim >/dev/null; then
 fi
 
 # ── configs ─────────────────────────────────────────────────────────────────
+# ── your settings (optional) ────────────────────────────────────────────────
+# before the configs: a WezTerm already running reloads as soon as weztermRC
+# lands and would fill ~/.config/kazrc with templates first
+if [ -n "${KAZRC_REPO:-}" ]; then
+    step "Your settings"
+    kdir="$HOME/.config/kazrc"
+    kname="$(basename "$KAZRC_REPO" .git)"
+    export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+    if git -C "$kdir" remote get-url origin 2>/dev/null | grep -qi "/$kname"; then
+        if [ $CHECK = 1 ]; then
+            good "kazrc" "$kdir"
+        elif git -C "$kdir" pull -q --ff-only 2>/dev/null; then
+            good "kazrc" "$kdir"
+        else
+            bad "kazrc" "$kdir: pull failed (local changes?), left as is"
+        fi
+    elif [ $CHECK = 1 ]; then
+        miss "kazrc" "$KAZRC_REPO -> $kdir"
+    else
+        theme=""
+        if [ -e "$kdir" ]; then
+            [ -f "$kdir/theme.json" ] && theme="$(cat "$kdir/theme.json")"
+            backup="$kdir.bak-$(date +%Y%m%d-%H%M%S)"
+            mv "$kdir" "$backup" && say "  moved the old $kdir to $backup"
+        fi
+        if git clone -q "$KAZRC_REPO" "$kdir" 2>/dev/null; then
+            [ -n "$theme" ] && printf '%s' "$theme" > "$kdir/theme.json"
+            new "kazrc" "$kdir"
+        else
+            bad "kazrc" "can't clone $KAZRC_REPO: set up GitHub access (ssh key or gh auth login), run again"
+        fi
+    fi
+    unset GIT_SSH_COMMAND
+fi
+
 step "Configs"
 clone_url() { # ssh when GitHub accepts this machine's key, https otherwise
     if ssh -o BatchMode=yes -o ConnectTimeout=5 -T git@github.com 2>&1 | grep -q "successfully authenticated"; then

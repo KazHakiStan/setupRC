@@ -5,6 +5,9 @@
 #   .\install.ps1          install what's missing, clone/update configs, sync plugins
 #   .\install.ps1 -Check   only report what's missing, change nothing
 #
+# Your own settings repo (~\.config\kazrc), cloned before anything starts:
+#   $env:KAZRC_REPO = "git@github.com:<you>/kazRC.git"; .\install.ps1
+#
 # On a fresh machine, without cloning this repo first:
 #   irm https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.ps1))) -Check
@@ -86,6 +89,43 @@ if (Has nvim) {
 }
 
 # ---- configs -----------------------------------------------------------------
+# ---- your settings (optional) -------------------------------------------------
+# before the configs: a WezTerm already running reloads as soon as weztermRC
+# lands and would fill ~\.config\kazrc with templates first
+if ($env:KAZRC_REPO) {
+    Step "Your settings"
+    $kdir = Join-Path $HOME ".config\kazrc"
+    $kname = [IO.Path]::GetFileNameWithoutExtension(($env:KAZRC_REPO -split "[/:]")[-1])
+    $env:GIT_SSH_COMMAND = "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+    $korigin = if (Test-Path (Join-Path $kdir ".git")) { git -C $kdir remote get-url origin 2>$null } else { "" }
+    if ($korigin -match "/$kname") {
+        if ($Check) { Good "kazrc" $kdir }
+        else {
+            git -C $kdir pull -q --ff-only 2>$null
+            if ($LASTEXITCODE -eq 0) { Good "kazrc" $kdir } else { Bad "kazrc" "${kdir}: pull failed (local changes?), left as is" }
+        }
+    } elseif ($Check) {
+        Miss "kazrc" "$($env:KAZRC_REPO) -> $kdir"
+    } else {
+        $theme = $null
+        if (Test-Path $kdir) {
+            $tf = Join-Path $kdir "theme.json"
+            if (Test-Path $tf) { $theme = Get-Content $tf -Raw }
+            $backup = "$kdir.bak-$(Get-Date -Format yyyyMMdd-HHmmss)"
+            Move-Item $kdir $backup
+            Write-Host "  moved the old $kdir to $backup"
+        }
+        git clone -q $env:KAZRC_REPO $kdir 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            if ($theme) { Set-Content -NoNewline -Path (Join-Path $kdir "theme.json") -Value $theme }
+            New "kazrc" $kdir
+        } else {
+            Bad "kazrc" "can't clone $($env:KAZRC_REPO): set up GitHub access (ssh key or gh auth login), run again"
+        }
+    }
+    Remove-Item Env:GIT_SSH_COMMAND
+}
+
 Step "Configs"
 function CloneUrl($repo) {
     $ssh = (ssh -o BatchMode=yes -o ConnectTimeout=5 -T git@github.com 2>&1) -join " "
