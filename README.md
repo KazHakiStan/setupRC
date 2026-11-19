@@ -56,6 +56,7 @@ first start with every default commented out:
 |---|---|---|
 | `wezterm.lua` | `LEADER e` | shell, font, leader, window, themes and backgrounds, status bar words and glyphs |
 | `nvim.lua` | `:KazConfig` | leader, vim options, theme order, completion Tab, projects, LSP servers, parsers, your own plugins and keymaps |
+| `themes.lua` | | theme order and default, shared by both |
 | `theme.json` | `LEADER t`, `:Theme` | the current theme, shared by both |
 
 Keep them in a private repo of your own, and setupRC clones it first on a new

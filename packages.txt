@@ -16,6 +16,7 @@ fd         fd                    fd                        Telescope find files
 node       node                  nodejs-lts                Mason: pyright, ts_ls, html, cssls, vimls
 magick     imagemagick           imagemagick               image previews in Telescope
 dotnet     cask:dotnet-sdk       dotnet-sdk                roslyn (C#) language server
+-          cask:temurin@21       java/temurin21-jdk        Java 21 for jdtls (Java language server)
 tree-sitter tree-sitter-cli       tree-sitter               building treesitter parsers (highlighting, debugger values)
 gcc        -                     gcc                       compiling treesitter parsers (Xcode tools cover it on macOS)
 pwsh       -                     pwsh                      WezTerm shell, nvim shell, powershell_es
