@@ -18,6 +18,7 @@ magick     imagemagick           imagemagick               image previews in Tel
 dotnet     cask:dotnet-sdk       dotnet-sdk                roslyn (C#) language server
 -          cask:temurin@21       java/temurin21-jdk        Java 21 for jdtls (Java language server)
 tree-sitter tree-sitter-cli       tree-sitter               building treesitter parsers (highlighting, debugger values)
+scrcpy     scrcpy                scrcpy                    Android screen mirroring in nvim (<leader>nm)
 gcc        -                     gcc                       compiling treesitter parsers (Xcode tools cover it on macOS)
 pwsh       -                     pwsh                      WezTerm shell, nvim shell, powershell_es
 7z         -                     7zip                      Mason unpacking archives
