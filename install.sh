@@ -124,7 +124,13 @@ if [ -n "${KAZRC_REPO:-}" ]; then
     step "Your settings"
     kdir="$HOME/.config/kazrc"
     kname="$(basename "$KAZRC_REPO" .git)"
-    export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+    # run by hand: ssh may ask for the key's passphrase (no agent holding it);
+    # unattended: fail at once instead of waiting for an answer
+    if [ -t 0 ]; then
+        export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
+    else
+        export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+    fi
     if git -C "$kdir" remote get-url origin 2>/dev/null | grep -qi "/$kname"; then
         if [ $CHECK = 1 ]; then
             good "kazrc" "$kdir"
@@ -195,8 +201,13 @@ if [ $CHECK = 0 ] && command -v nvim >/dev/null && [ -d "$HOME/.config/nvim" ]; 
     step "Neovim plugins"
     say "  plugins at the versions in lazy-lock.json…"
     nvim --headless "+Lazy! restore" "+quitall" >/dev/null 2>&1
-    say "  treesitter parsers…"
-    nvim --headless "+lua local t = require('kazhakistan.treesitter').install() if t then t:wait(600000) end" "+quitall" >/dev/null 2>&1
+    say "  treesitter parsers (building them takes a few minutes)…"
+    left="$(nvim --headless "+lua local ts = require('kazhakistan.treesitter') local t = ts.install() if t then t:wait(1800000) end io.stdout:write('missing:' .. table.concat(ts.missing(), ' '))" "+quitall" 2>/dev/null)"
+    case "$left" in
+        "missing:") good "parsers" "built" ;;
+        missing:*) bad "parsers" "not built: ${left#missing:} (nvim retries on the next start)" ;;
+        *) bad "parsers" "couldn't check (open nvim: they build on start)" ;;
+    esac
     say "  language servers install by Mason on the first nvim start (:Mason shows progress)"
 fi
 

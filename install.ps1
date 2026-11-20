@@ -96,7 +96,10 @@ if ($env:KAZRC_REPO) {
     Step "Your settings"
     $kdir = Join-Path $HOME ".config\kazrc"
     $kname = [IO.Path]::GetFileNameWithoutExtension(($env:KAZRC_REPO -split "[/:]")[-1])
-    $env:GIT_SSH_COMMAND = "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+    # run by hand: ssh may ask for the key's passphrase (no agent holding it);
+    # unattended: fail at once instead of waiting for an answer
+    $env:GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=accept-new"
+    if (-not [Environment]::UserInteractive) { $env:GIT_SSH_COMMAND += " -o BatchMode=yes" }
     $korigin = if (Test-Path (Join-Path $kdir ".git")) { git -C $kdir remote get-url origin 2>$null } else { "" }
     if ($korigin -match "/$kname") {
         if ($Check) { Good "kazrc" $kdir }
@@ -169,8 +172,11 @@ if (-not $Check -and (Has nvim) -and (Test-Path $Configs[0].Dir)) {
     Step "Neovim plugins"
     Write-Host "  plugins at the versions in lazy-lock.json..."
     nvim --headless "+Lazy! restore" "+quitall" *> $null
-    Write-Host "  treesitter parsers..."
-    nvim --headless "+lua local t = require('kazhakistan.treesitter').install() if t then t:wait(600000) end" "+quitall" *> $null
+    Write-Host "  treesitter parsers (building them takes a few minutes)..."
+    $left = (nvim --headless "+lua local ts = require('kazhakistan.treesitter') local t = ts.install() if t then t:wait(1800000) end io.stdout:write('missing:' .. table.concat(ts.missing(), ' '))" "+quitall" 2>$null) -join ""
+    if ($left -eq "missing:") { Good "parsers" "built" }
+    elseif ($left -like "missing:*") { Bad "parsers" "not built: $($left.Substring(8)) (nvim retries on the next start)" }
+    else { Bad "parsers" "couldn't check (open nvim: they build on start)" }
     Write-Host "  language servers install by Mason on the first nvim start (:Mason shows progress)"
 }
 
