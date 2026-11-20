@@ -4,6 +4,7 @@
 #
 #   ./install.sh           install what's missing, clone/update configs, sync plugins
 #   ./install.sh --check   only report what's missing, change nothing
+#   ./install.sh --latest  configs at the newest commit, not the newest release
 #
 # Your own settings repo (~/.config/kazrc), cloned before anything starts:
 #   KAZRC_REPO=git@github.com:<you>/kazRC.git ./install.sh
@@ -19,8 +20,14 @@ MIN_NVIM="0.12"
 # repo:target
 CONFIGS="neovimRC:$HOME/.config/nvim weztermRC:$HOME/.config/wezterm"
 
-CHECK=0
-[ "${1:-}" = "--check" ] && CHECK=1
+CHECK=0 LATEST=0
+for arg in "$@"; do
+    case "$arg" in
+        --check) CHECK=1 ;;
+        --latest) LATEST=1 ;;
+        *) echo "unknown option $arg (--check, --latest)"; exit 2 ;;
+    esac
+done
 
 ok=0 added=0 missing=0 failed=0
 say()  { printf '%s\n' "$*"; }
@@ -174,15 +181,36 @@ clone_url() { # ssh when GitHub accepts this machine's key, https otherwise
         echo "https://github.com/$GITHUB_USER/$1.git"
     fi
 }
+# Releases are tags (v1.2.0) on master. A clone stays on master and only moves
+# forward: to the newest release, or with --latest to the newest commit.
+newest_release() { git -C "$1" tag --list 'v*' --sort=-v:refname | head -1; }
+version() { git -C "$1" describe --tags --always; }
+update_config() { # dir: says what happened, fails when it couldn't
+    local dir="$1" target
+    git -C "$dir" fetch -q --tags --force origin 2>/dev/null || { echo "can't reach origin, left as is"; return 1; }
+    # lazy rewrites lazy-lock.json; the repo's copy is the one to keep
+    git -C "$dir" checkout -q -- lazy-lock.json 2>/dev/null
+    target="$(newest_release "$dir")"
+    [ $LATEST = 1 ] || [ -z "$target" ] && target="@{u}"
+    if git -C "$dir" merge-base --is-ancestor "$target" HEAD 2>/dev/null; then
+        echo "up to date ($(version "$dir"))"
+    elif ! git -C "$dir" merge-base --is-ancestor HEAD "$target" 2>/dev/null; then
+        echo "has commits of its own, left as is"; return 1
+    elif git -C "$dir" merge -q --ff-only "$target" 2>/dev/null; then
+        echo "updated to $(version "$dir")"
+    else
+        echo "changed here (git status), left as is: your settings go to ~/.config/kazrc"; return 1
+    fi
+}
 for pair in $CONFIGS; do
     repo="${pair%%:*}" dir="${pair#*:}"
     if git -C "$dir" remote get-url origin 2>/dev/null | grep -q "/$repo"; then
         if [ $CHECK = 1 ]; then
-            good "$repo" "$dir"
-        elif out=$(git -C "$dir" pull --ff-only 2>&1); then
-            good "$repo" "$dir ($(echo "$out" | tail -1))"
+            good "$repo" "$dir ($(version "$dir"))"
+        elif out=$(update_config "$dir"); then
+            good "$repo" "$dir: $out"
         else
-            bad "$repo" "$dir: pull failed (local changes?), left as is"
+            bad "$repo" "$dir: $out"
         fi
     elif [ $CHECK = 1 ]; then
         miss "$repo" "$dir"
@@ -192,7 +220,13 @@ for pair in $CONFIGS; do
             mv "$dir" "$backup" && say "  moved the old $dir to $backup"
         fi
         mkdir -p "$(dirname "$dir")"
-        if git clone -q "$(clone_url "$repo")" "$dir"; then new "$repo" "$dir"; else bad "$repo" "clone failed"; fi
+        if git clone -q "$(clone_url "$repo")" "$dir"; then
+            tag="$(newest_release "$dir")"
+            [ $LATEST = 0 ] && [ -n "$tag" ] && git -C "$dir" reset -q --hard "$tag"
+            new "$repo" "$dir ($(version "$dir"))"
+        else
+            bad "$repo" "clone failed"
+        fi
     fi
 done
 

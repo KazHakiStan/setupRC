@@ -4,6 +4,7 @@
 #
 #   .\install.ps1          install what's missing, clone/update configs, sync plugins
 #   .\install.ps1 -Check   only report what's missing, change nothing
+#   .\install.ps1 -Latest  configs at the newest commit, not the newest release
 #
 # Your own settings repo (~\.config\kazrc), cloned before anything starts:
 #   $env:KAZRC_REPO = "git@github.com:<you>/kazRC.git"; .\install.ps1
@@ -12,7 +13,7 @@
 #   irm https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/KazHakiStan/setupRC/master/install.ps1))) -Check
 
-param([switch]$Check)
+param([switch]$Check, [switch]$Latest)
 
 $ErrorActionPreference = "Continue"
 $RepoRaw = "https://raw.githubusercontent.com/KazHakiStan/setupRC/master"
@@ -147,12 +148,31 @@ function CloneUrl($repo) {
     $ssh = (ssh -o BatchMode=yes -o ConnectTimeout=5 -T git@github.com 2>&1) -join " "
     if ($ssh -match "successfully authenticated") { "git@github.com:$GithubUser/$repo.git" } else { "https://github.com/$GithubUser/$repo.git" }
 }
+# Releases are tags (v1.2.0) on master. A clone stays on master and only moves
+# forward: to the newest release, or with -Latest to the newest commit.
+function NewestRelease($dir) { @(git -C $dir tag --list "v*" --sort=-v:refname)[0] }
+function Version($dir) { git -C $dir describe --tags --always }
+function UpdateConfig($dir) { # what happened, and whether it worked
+    git -C $dir fetch -q --tags --force origin 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false, "can't reach origin, left as is" }
+    # lazy rewrites lazy-lock.json; the repo's copy is the one to keep
+    git -C $dir checkout -q -- lazy-lock.json 2>$null
+    $target = NewestRelease $dir
+    if ($Latest -or -not $target) { $target = "@{u}" }
+    git -C $dir merge-base --is-ancestor $target HEAD 2>$null
+    if ($LASTEXITCODE -eq 0) { return $true, "up to date ($(Version $dir))" }
+    git -C $dir merge-base --is-ancestor HEAD $target 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false, "has commits of its own, left as is" }
+    git -C $dir merge -q --ff-only $target 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false, "changed here (git status), left as is: your settings go to ~\.config\kazrc" }
+    return $true, "updated to $(Version $dir)"
+}
 foreach ($c in $Configs) {
     $origin = if (Test-Path (Join-Path $c.Dir ".git")) { git -C $c.Dir remote get-url origin 2>$null } else { "" }
     if ($origin -match "/$($c.Repo)") {
-        if ($Check) { Good $c.Repo $c.Dir; continue }
-        $out = git -C $c.Dir pull --ff-only 2>&1
-        if ($LASTEXITCODE -eq 0) { Good $c.Repo "$($c.Dir) ($(@($out)[-1]))" } else { Bad $c.Repo "$($c.Dir): pull failed (local changes?), left as is" }
+        if ($Check) { Good $c.Repo "$($c.Dir) ($(Version $c.Dir))"; continue }
+        $done, $msg = UpdateConfig $c.Dir
+        if ($done) { Good $c.Repo "$($c.Dir): $msg" } else { Bad $c.Repo "$($c.Dir): $msg" }
     } elseif ($Check) {
         Miss $c.Repo $c.Dir
     } else {
@@ -163,7 +183,11 @@ foreach ($c in $Configs) {
         }
         New-Item -ItemType Directory -Force (Split-Path $c.Dir) | Out-Null
         git clone -q (CloneUrl $c.Repo) $c.Dir
-        if ($LASTEXITCODE -eq 0) { New $c.Repo $c.Dir } else { Bad $c.Repo "clone failed" }
+        if ($LASTEXITCODE -eq 0) {
+            $tag = NewestRelease $c.Dir
+            if (-not $Latest -and $tag) { git -C $c.Dir reset -q --hard $tag }
+            New $c.Repo "$($c.Dir) ($(Version $c.Dir))"
+        } else { Bad $c.Repo "clone failed" }
     }
 }
 
